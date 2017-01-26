@@ -1,0 +1,10 @@
+{
+    "name": "bash.origin.express",
+    "version": "0.1.0",
+    "dependencies": {
+        "bash.origin.test": "^0.1.14"
+    },
+    "scripts": {
+        "test": "bash.origin.test examples"
+    }
+}
