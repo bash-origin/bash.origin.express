@@ -8,7 +8,7 @@ depend {
 
 function PRIVATE_Run {
 
-    return;
+    return 0;
 
 # TODO: Use 'CALL_start' which uses bash.origin.process (mon) to start server
 #       so we can then make request usign curl and then stop server again.
