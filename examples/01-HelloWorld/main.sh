@@ -2,9 +2,11 @@
 
 export PORT="8080"
 
+echo "TEST_MATCH_IGNORE>>>"
 depend {
     "pages": "@com.github/bash-origin/bash.origin.express#1"
 }
+echo "<<<TEST_MATCH_IGNORE"
 
 function PRIVATE_Run {
 
