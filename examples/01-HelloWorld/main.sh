@@ -10,6 +10,7 @@ echo "<<<TEST_MATCH_IGNORE"
 
 function PRIVATE_Run {
 
+    echo "OK"
     return 0;
 
 # TODO: Use 'CALL_start' which uses bash.origin.process (mon) to start server
