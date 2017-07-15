@@ -2,4 +2,4 @@
 /examples/*/.actual.*
 /.installed.*
 *~.compiled.*
-/.rt/
+.rt/

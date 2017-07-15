@@ -4,7 +4,6 @@ depend {
     "process": "@com.github/bash-origin/bash.origin.process#s1"
 }
 
-
 CALL_process run "bash.origin.express~01-HelloWorld" {
     "server": {
         "env": {
@@ -19,8 +18,16 @@ CALL_process run "bash.origin.express~01-HelloWorld" {
             }
 
             CALL_server run {
+                "config": {
+                    "title": "Hello World",
+                    "body": function /* CodeBlock */ (options) {
+                        return "Hello World!";
+                    }
+                },
                 "routes": {
-                    "/": "<head><title>Hello World</title></head><body>Hello World!</body>"
+                    "/": function /* CodeBlock */ (options) {
+                        return "<head><title>" + options.config.title + "</title></head><body>" + options.config.body + "</body>";
+                    }
                 }
             }
 
@@ -28,7 +35,7 @@ CALL_process run "bash.origin.express~01-HelloWorld" {
         "routes": {
             "alive": {
                 "uri": "/",
-                "expect": "/bash.origin.express/",
+                "expect": "<head><title>Hello World</title></head><body>Hello World!</body>",
                 "exit": true
             }
         }

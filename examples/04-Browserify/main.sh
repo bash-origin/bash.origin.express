@@ -4,7 +4,6 @@ depend {
     "process": "@com.github/bash-origin/bash.origin.process#s1"
 }
 
-
 CALL_process run "bash.origin.express~01-HelloWorld" {
     "server": {
         "env": {
@@ -20,15 +19,19 @@ CALL_process run "bash.origin.express~01-HelloWorld" {
 
             CALL_server run {
                 "routes": {
-                    "/": "<head><title>Hello World</title></head><body>Hello World!</body>"
+                    "/code.js": {
+                        "@it.pinf.org.browserify#s1": {
+                            "src": "$__DIRNAME__/code.js"
+                        }
+                    }
                 }
             }
 
         <<<),
         "routes": {
             "alive": {
-                "uri": "/",
-                "expect": "/bash.origin.express/",
+                "uri": "/code.js",
+                "expect": "TBD",
                 "exit": true
             }
         }

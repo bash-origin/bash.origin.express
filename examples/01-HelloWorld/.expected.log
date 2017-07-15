@@ -1,1 +1,10 @@
+[bash.origin.process] Run program 'server': 
+[1:server] Server: http://localhost:3000/
+[1:server] [READY]
+[bash.origin.process] Waiting until program 'server' is alive by checking route 'http://127.0.0.1:3000/' against '"/bash.origin.express/"'.
+[bash.origin.process] Program 'server' is alive!
+[1:server] 127.0.0.1 - - [15/Jul/2017:03:38:07 +0000] "GET / HTTP/1.1" 200 404 "-" "-"
+[bash.origin.process] Enter '<ProgramNumber> + [Return]' to restart program or 'commands' (list commands) or 'q' (quit):
+[bash.origin.process] (No programs registered)
+[bash.origin.process] Quitting.
 OK
