@@ -1,0 +1,11 @@
+[bash.origin.process] Run program 'server': 
+[1:server] Adding route: /code.js
+[1:server] Server: http://localhost:3000/
+[1:server] [READY]
+[bash.origin.process] Waiting until program 'server' is alive by checking route 'http://127.0.0.1:3000/code.js' against '"/window.hello = \"world\";/"'.
+[bash.origin.process] Program 'server' is alive!
+[bash.origin.process] Enter '<ProgramNumber> + [Return]' to restart program or 'commands' (list commands) or 'q' (quit):
+[bash.origin.process] (No programs registered)
+[1:server] 127.0.0.1 - "GET /code.js HTTP/1.1" 200 - "-" "-"
+[bash.origin.process] Quitting.
+OK
