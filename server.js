@@ -56,7 +56,7 @@ exports.forConfig = function (config, callback) {
         return res.end();
     });
 
-    app.use(MORGAN('combined'));
+    app.use(MORGAN(':remote-addr - ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent"'));
     app.use(BODY_PARSER.json());
     app.use(BODY_PARSER.urlencoded({
         extended: false
