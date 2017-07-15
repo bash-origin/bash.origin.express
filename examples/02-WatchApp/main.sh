@@ -2,7 +2,6 @@
 
 export PORT="8080"
 
-echo "TEST_MATCH_IGNORE>>>"
 depend {
     "pages": {
         "@com.github/bash-origin/bash.origin.express#s1": {
@@ -25,7 +24,6 @@ depend {
         }    
     }
 }
-echo "<<<TEST_MATCH_IGNORE"
 
 function PRIVATE_Run {
 
@@ -57,4 +55,6 @@ function PRIVATE_Verify {
     #fi
 }
 
-PRIVATE_Run "$@"
+#PRIVATE_Run "$@"
+
+echo "SKIP"
