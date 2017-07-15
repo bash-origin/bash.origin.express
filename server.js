@@ -5,6 +5,8 @@ const EXPRESS = require(PATH.join(__dirname, ".rt/it.pinf.org.npmjs/node_modules
 const BODY_PARSER = require(PATH.join(__dirname, ".rt/it.pinf.org.npmjs/node_modules", "body-parser"));
 const MORGAN = require(PATH.join(__dirname, ".rt/it.pinf.org.npmjs/node_modules", "morgan"));
 const CODEBLOCK = require(PATH.join(__dirname, ".rt/it.pinf.org.npmjs/node_modules", "codeblock"));
+const MIME_TYPES = require(PATH.join(__dirname, ".rt/it.pinf.org.npmjs/node_modules", "mime-types"));
+const BO = require('bash.origin');
 
 
 exports.forConfig = function (config, callback) {
@@ -71,17 +73,60 @@ exports.forConfig = function (config, callback) {
 
         Object.keys(CONFIG.routes).forEach(function (route) {
 
-            var routeApp = CODEBLOCK.run(CONFIG.routes[route], {
-                options: {
-                    "EXPRESS": EXPRESS,
-                    PORT: parseInt(PORT),
-                    config: config
+            var routeImpl = CONFIG.routes[route];
+
+            if (typeof routeImpl === "object") {
+                var keys = Object.keys(routeImpl);
+                if (
+                    keys.length === 1 &&
+                    /^@.+\./.test(keys[0])
+                ) {
+                    var implId = keys[0].replace(/^@/, "");
+                    var implConfig = routeImpl[keys[0]];
+
+                    var impl = BO.depend(implId, implConfig)["#io.pinf/process~s1"];
+
+                    var error = null;
+                    var result = null;
+                    impl(function (err, output) {
+                        if (err) {
+                            error = err;
+                        } else {
+                            result = output;
+                        }
+                    });
+
+                    var contentType = MIME_TYPES.lookup(route) || null;
+                    routeImpl = function (req, res, next) {
+                        if (error) {
+                            return next(error);
+                        }
+                        if (contentType) {
+                            res.writeHead(200, {
+                                "Content-Type": contentType
+                            });
+                        }
+                        res.end(result);
+                    };
                 }
-            }, {
-                sandbox: {
-                    require: require
-                }
-            });
+            }
+
+            var routeApp = null;
+            if (typeof routeImpl === "function") {
+                routeApp = routeImpl;
+            } else {
+                routeApp = CODEBLOCK.run(routeImpl, {
+                    options: {
+                        "EXPRESS": EXPRESS,
+                        PORT: parseInt(PORT),
+                        config: config
+                    }
+                }, {
+                    sandbox: {
+                        require: require
+                    }
+                });
+            }
 
             if (typeof routeApp === "string") {
                 var routeResponse = routeApp;

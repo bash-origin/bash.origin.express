@@ -9,7 +9,8 @@ depend {
                 "body-parser": "^1.16.0",
                 "codeblock": "^0.2.2",
                 "uuidgen": "^1.0.0",
-                "lodash": "^4.17.4"
+                "lodash": "^4.17.4",
+                "mime-types": "^2.1.15"
             }
         }
     }

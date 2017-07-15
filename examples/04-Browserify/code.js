@@ -1,2 +1,1 @@
-
-// TODO: Inject 'Hello World!' into body!
+window.hello = "world";

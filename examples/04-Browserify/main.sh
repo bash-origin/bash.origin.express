@@ -31,7 +31,7 @@ CALL_process run "bash.origin.express~01-HelloWorld" {
         "routes": {
             "alive": {
                 "uri": "/code.js",
-                "expect": "TBD",
+                "expect": "/window.hello = \"world\";/",
                 "exit": true
             }
         }
