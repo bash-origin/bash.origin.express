@@ -8,12 +8,13 @@ const CODEBLOCK = require(PATH.join(__dirname, ".rt/it.pinf.org.npmjs/node_modul
 
 
 exports.forConfig = function (config, callback) {
+    
 
     var CONFIG = {};
     try {
         if (typeof config === "string") {
             CONFIG = CODEBLOCK.thawFromJSON(config);
-        } {
+        } else {
             CONFIG = config;
         }
     } catch (err) {
@@ -67,6 +68,7 @@ exports.forConfig = function (config, callback) {
 
 
     if (CONFIG.routes) {
+
         Object.keys(CONFIG.routes).forEach(function (route) {
 
             var routeApp = CODEBLOCK.run(CONFIG.routes[route], {
