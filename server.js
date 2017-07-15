@@ -1,5 +1,6 @@
 
 const PATH = require("path");
+const FS = require("fs");
 const HTTP = require("http");
 const EXPRESS = require(PATH.join(__dirname, ".rt/it.pinf.org.npmjs/node_modules", "express"));
 const BODY_PARSER = require(PATH.join(__dirname, ".rt/it.pinf.org.npmjs/node_modules", "body-parser"));
@@ -69,11 +70,12 @@ exports.forConfig = function (config, callback) {
     config = CODEBLOCK.runAll(config);
 
 
-    if (CONFIG.routes) {
+    function hookRoutes (routes) {
 
-        Object.keys(CONFIG.routes).forEach(function (route) {
+        Object.keys(routes).forEach(function (route) {
 
-            var routeImpl = CONFIG.routes[route];
+            var routeImpl = routes[route];
+            var routeApp = null;
 
             if (typeof routeImpl === "object") {
                 var keys = Object.keys(routeImpl);
@@ -86,40 +88,53 @@ exports.forConfig = function (config, callback) {
 
                     var impl = BO.depend(implId, implConfig)["#io.pinf/process~s1"];
 
-                    var error = null;
-                    var result = null;
-                    impl(function (err, output) {
-                        if (err) {
-                            error = err;
-                        } else {
-                            result = output;
-                        }
-                    });
-
                     var contentType = MIME_TYPES.lookup(route) || null;
-                    routeImpl = function (req, res, next) {
-                        if (error) {
-                            return next(error);
+                    routeApp = function (req, res, next) {
+                        impl(function (err, result) {
+                            if (err) {
+                                err.message += " (for route '" + route + "')";
+                                err.stack += "\n(for route '" + route + "')";
+                                return next(err);
+                            }
+                            if (contentType) {
+                                res.writeHead(200, {
+                                    "Content-Type": contentType
+                                });
+                            }
+                            res.end(result);
+                        });
+                    };
+                }
+            } else
+            if (
+                typeof routeImpl === "string" &&
+                /^\//.test(routeImpl)
+            ) {
+                var contentType = MIME_TYPES.lookup(routeImpl) || null;
+                routeApp = function (req, res, next) {
+                    FS.readFile(routeImpl, "utf8", function (err, data) {
+                        if (err) {
+                            err.message += " (for route '" + route + "')";
+                            err.stack += "\n(for route '" + route + "')";
+                            return next(err);
                         }
                         if (contentType) {
                             res.writeHead(200, {
                                 "Content-Type": contentType
                             });
                         }
-                        res.end(result);
-                    };
-                }
+                        res.end(data);
+                    });
+                };
             }
 
-            var routeApp = null;
-            if (typeof routeImpl === "function") {
-                routeApp = routeImpl;
-            } else {
+            if (!routeApp) {
                 routeApp = CODEBLOCK.run(routeImpl, {
                     options: {
                         "EXPRESS": EXPRESS,
                         PORT: parseInt(PORT),
-                        config: config
+                        config: config,
+                        hookRoutes: hookRoutes
                     }
                 }, {
                     sandbox: {
@@ -146,6 +161,11 @@ exports.forConfig = function (config, callback) {
             app.get(route, routeApp);
             app.post(route, routeApp);
         });
+    }
+
+
+    if (CONFIG.routes) {
+        hookRoutes(CONFIG.routes);
     }
 
     app.use(EXPRESS.static(PATH.join(__dirname, 'www')));
