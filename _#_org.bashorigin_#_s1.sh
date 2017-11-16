@@ -7,7 +7,7 @@ depend {
                 "express": "^4.14.0",
                 "morgan": "^1.7.0",
                 "body-parser": "^1.16.0",
-                "codeblock": "^0.2.2",
+                "codeblock": "^0.3.6",
                 "uuidgen": "^1.0.0",
                 "lodash": "^4.17.4",
                 "mime-types": "^2.1.15",
