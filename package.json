@@ -1,12 +1,12 @@
 {
-    "name": "bash.origin.express",
-    "version": "0.1.2",
-    "main": "server.js",
-    "dependencies": {
-        "bash.origin.test": "^0.1.28"
-    },
-    "scripts": {
-        "install": "./_#_org.bashorigin_#_s1.sh",
-        "test": "BO_ROOT_SCRIPT_PATH=$(pwd)/node_modules/bash.origin/bash.origin bash.origin.test examples"
-    }
+  "name": "bash.origin.express",
+  "version": "0.1.2",
+  "main": "server.js",
+  "dependencies": {
+    "bash.origin.test": "^0.1.28"
+  },
+  "scripts": {
+    "install": "./_#_org.bashorigin_#_s1.sh",
+    "test": "BO_ROOT_SCRIPT_PATH=$(pwd)/node_modules/bash.origin/bash.origin bash.origin.test examples"
+  }
 }
