@@ -1,5 +1,5 @@
 
-const LIB = require("./node_modules/.bin/bash.origin.workspace.inf.js").forPackage(__dirname).LIB;
+const LIB = require("bash.origin.workspace").forPackage(__dirname).LIB;
 
 
 const PATH = LIB.PATH;
