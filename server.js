@@ -1,26 +1,17 @@
 
-const PATH = require("path");
-const FS = require("fs");
-
-if (!FS.existsSync(PATH.join(__dirname, ".rt"))) {
-    process.stdout.write("TEST_MATCH_IGNORE>>>\n");
-    require("child_process").execSync("./_#_org.bashorigin_#_s1.sh", {
-        cwd: __dirname
-    });
-    process.stdout.write("<<<TEST_MATCH_IGNORE\n");
-}
-
-const HTTP = require("http");
-const EXPRESS = require(PATH.join(__dirname, ".rt/it.pinf.org.npmjs/node_modules", "express"));
-const HTTP_SHUTDOWN = require(PATH.join(__dirname, ".rt/it.pinf.org.npmjs/node_modules", "http-shutdown"));
-const BODY_PARSER = require(PATH.join(__dirname, ".rt/it.pinf.org.npmjs/node_modules", "body-parser"));
-const MORGAN = require(PATH.join(__dirname, ".rt/it.pinf.org.npmjs/node_modules", "morgan"));
-const CODEBLOCK = require(PATH.join(__dirname, ".rt/it.pinf.org.npmjs/node_modules", "codeblock"));
-const MIME_TYPES = require(PATH.join(__dirname, ".rt/it.pinf.org.npmjs/node_modules", "mime-types"));
-const BO = require('bash.origin');
+const LIB = require("./node_modules/.bin/bash.origin.workspace.inf.js").forPackage(__dirname).LIB;
 
 
-
+const PATH = LIB.PATH;
+const FS = LIB.FS;
+const HTTP = LIB.HTTP;
+const EXPRESS = LIB.EXPRESS;
+const HTTP_SHUTDOWN = LIB.HTTP_SHUTDOWN;
+const BODY_PARSER = LIB.BODY_PARSER;
+const MORGAN = LIB.MORGAN;
+const CODEBLOCK = LIB.CODEBLOCK;
+const MIME_TYPES = LIB.MIME_TYPES;
+const BO = LIB.BASH_ORIGIN;
 
 
 exports.hookRoutes = function (app, routes) {

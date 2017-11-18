@@ -1,5 +1,5 @@
 [bash.origin.process] Run program 'server': 
-[1:server] Adding route: /
+[1:server] [bash.origin.express] Adding route: /
 [1:server] Server: http://localhost:3000/
 [1:server] [READY]
 [bash.origin.process] Waiting until program 'server' is alive by checking route 'http://127.0.0.1:3000/' against '"<head><title>Hello World</title></head><body>Hello World!</body>"'.
