@@ -6,7 +6,7 @@
     },
     "main": "server.js",
     "dependencies": {
-        "bash.origin.workspace": "^0.2.2",
+        "bash.origin.workspace": "^0.2.7",
         "http-shutdown": "^1.2.0"
     },
     "scripts": {
