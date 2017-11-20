@@ -1,6 +1,6 @@
 {
     "name": "bash.origin.express",
-    "version": "0.1.9",
+    "version": "0.1.10",
     "pm": {
         "publish": "npm"
     },
