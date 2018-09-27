@@ -21,6 +21,13 @@ exports.hookRoutes = function (app, routes) {
         app = new EXPRESS();
     }
 
+    if (process.env.VERBOSE) {
+        app.use(function (req, res, next) {
+            console.log("[bash.origin.express] Request:", req.method, req.url);
+            return next();
+        });
+    }
+
     // Sort routes as best as we can
     var keys = [];
     keys = Object.keys(routes).map(function (route) {
@@ -140,10 +147,14 @@ exports.hookRoutes = function (app, routes) {
             !routeApp &&
             Array.isArray(routeImpl)
         ) {
+            // Serve files.
+
+console.log("SETUP ROUTE APP", routeImpl);            
             routeApp = function (req, res, next) {
 
                 var subPath = req.url.replace(req.route.path, "");
-            
+console.log("subPath", subPath);
+                
                 var path = null;
                 for (var i=0; i<routeImpl.length;i++) {
                     path = PATH.join(routeImpl[i], subPath);
@@ -209,12 +220,6 @@ exports.hookRoutes = function (app, routes) {
             route = new RegExp(route);
         }
         console.log("[bash.origin.express] Adding route:", route);
-        if (process.env.VERBOSE) {
-            app.use(function (req, res, next) {
-                console.log("[bash.origin.express] Request:", req.method, req.url);
-                return next();
-            });
-        }
 
         // TODO: Relocate to pinf.io helper
         var routeWrapper = function (reqOriginal, res, next) {
@@ -227,12 +232,13 @@ exports.hookRoutes = function (app, routes) {
             req.url = "/" + reqOriginal.url.replace(new RegExp(routeStr + '(.*)$'), "$1").replace(/^\//, "");
             req.mountAt = reqOriginal.url.substring(0, reqOriginal.url.length - req.url.length + 1);
                         
-            if (process.env.VERBOSE) {
+            if (true || process.env.VERBOSE) {
                 console.log("[bash.origin.express] Routing request", req.url, "with method", req.method ,"due to route", route);
             }
 
             return routeApp(req, res, next);
         };
+
         app.get(route, routeWrapper);
         app.post(route, routeWrapper);            
     });
@@ -292,7 +298,8 @@ exports.forConfig = function (config, callback) {
         return res.end();
     });
 
-    app.use(MORGAN(':remote-addr - ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent"'));
+    //app.use(MORGAN(':remote-addr - ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent"'));
+    app.use(MORGAN(':remote-addr - ":method :url HTTP/:http-version" :status :res[content-length] ":referrer"'));
     app.use(BODY_PARSER.json());
     app.use(BODY_PARSER.urlencoded({
         extended: false
