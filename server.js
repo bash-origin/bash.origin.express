@@ -1,10 +1,10 @@
 
-const LIB = require("bash.origin.workspace").forPackage(__dirname).LIB;
+const LIB = require("bash.origin.lib").forPackage(__dirname).js;
 
 
-const PATH = LIB.PATH;
-const FS = LIB.FS;
-const HTTP = LIB.HTTP;
+const PATH = LIB.path;
+const FS = LIB.FS_EXTRA;
+const HTTP = LIB.http;
 const EXPRESS = LIB.EXPRESS;
 const HTTP_SHUTDOWN = LIB.HTTP_SHUTDOWN;
 const BODY_PARSER = LIB.BODY_PARSER;
@@ -119,6 +119,9 @@ exports.hookRoutes = function (app, routes) {
             typeof routeImpl === "string" &&
             /^\//.test(routeImpl)
         ) {
+            if (!FS.existsSync(routeImpl)) {
+                FS.mkdirsSync(routeImpl);
+            }
             if (FS.statSync(routeImpl).isDirectory()) {
                 routeImpl = [
                     routeImpl
@@ -149,11 +152,11 @@ exports.hookRoutes = function (app, routes) {
         ) {
             // Serve files.
 
-console.log("SETUP ROUTE APP", routeImpl);            
+//console.log("SETUP ROUTE APP", routeImpl);            
             routeApp = function (req, res, next) {
 
                 var subPath = req.url.replace(req.route.path, "");
-console.log("subPath", subPath);
+//console.log("subPath", subPath);
                 
                 var path = null;
                 for (var i=0; i<routeImpl.length;i++) {

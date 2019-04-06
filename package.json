@@ -5,11 +5,15 @@
         "publish": "npm"
     },
     "main": "server.js",
+    "__dependencies": {
+        "bash.origin.lib": "^0.2.15"
+    },
     "dependencies": {
-        "bash.origin.lib": "^0.2.15",
-        "http-shutdown": "^1.2.0"
+        "http-shutdown": "^1.2.0",
+        "lib.json": "^0.0.2"
     },
     "scripts": {
+        "install": "lib.json from node_modules > .~lib.json",
         "test": "bash.origin.test examples"
     }
 }
