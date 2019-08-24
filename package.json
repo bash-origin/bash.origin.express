@@ -1,19 +1,17 @@
 {
-    "name": "bash.origin.express",
-    "version": "0.1.12",
-    "pm": {
-        "publish": "npm"
-    },
-    "main": "server.js",
-    "__dependencies": {
-        "bash.origin.lib": "^0.2.15"
-    },
-    "dependencies": {
-        "http-shutdown": "^1.2.0",
-        "lib.json": "^0.0.2"
-    },
-    "scripts": {
-        "install": "lib.json from node_modules > .~lib.json",
-        "test": "bash.origin.test examples"
-    }
+  "name": "bash.origin.express",
+  "version": "0.2.0-pre.0",
+  "pm": {
+    "publish": "npm"
+  },
+  "main": "server.js",
+  "dependencies": {
+    "http-shutdown": "^1.2.0",
+    "lib.json": "^0.0.3",
+    "bash.origin.lib": "^0.4.0-pre.0"
+  },
+  "scripts": {
+    "install": "lib.json from node_modules > .~lib.json",
+    "test": "bash.origin.test examples"
+  }
 }
