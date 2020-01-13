@@ -1,5 +1,7 @@
 #!/usr/bin/env bash.origin.script
 
+echo ">>>TEST_IGNORE_LINE:Waiting until program <<<"
+
 depend {
     "process": "@com.github/bash-origin/bash.origin.process#s1"
 }

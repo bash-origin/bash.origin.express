@@ -1,8 +1,22 @@
 
+// TODO: Do this as part of a first-run hook.
+const PATH = require("path");
+const NFS = require("fs");
+const CHILD_PROCESS = require("child_process");
+if (!NFS.existsSync(PATH.join(__dirname, '.~lib.json'))) {
+    if (NFS.existsSync(PATH.join(__dirname, 'node_modules/.bin/lib.json'))) {
+        CHILD_PROCESS.execSync('lib.json from node_modules > .~lib.json', {
+            cwd: __dirname
+        });
+    } else {
+        CHILD_PROCESS.execSync('lib.json from node_modules > .~lib.json', {
+            cwd: __dirname
+        });
+    }
+}
+
 const LIB = require("bash.origin.lib").forPackage(__dirname).js;
 
-
-const PATH = LIB.path;
 const FS = LIB.FS_EXTRA;
 const HTTP = LIB.http;
 const EXPRESS = LIB.EXPRESS;

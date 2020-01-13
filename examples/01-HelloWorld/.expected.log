@@ -2,7 +2,6 @@
 [1m[1:server] [22m[bash.origin.express] Adding route: /
 [1m[1:server] [22mServer: http://localhost:3000/
 [1m[1:server] [22m[READY]
-[35m[bash.origin.process] Waiting until program 'server' is alive by checking route 'http://127.0.0.1:3000/' against '"<head><title>Hello World</title></head><body>Hello World!</body>"'.[39m
 [1m[1:server] [22m[bash.origin.express] Routing request / with method GET due to route /
 [35m[bash.origin.process] Program 'server' is alive![39m
 [36m[bash.origin.process] Enter '<ProgramNumber> + [Return]' to restart program or 'commands' (list commands) or 'q' (quit):[39m
