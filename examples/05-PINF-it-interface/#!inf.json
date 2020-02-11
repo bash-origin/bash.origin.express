@@ -1,0 +1,30 @@
+#!/usr/bin/env inf
+{
+    "#": "gi0.PINF.it/core/v0",
+
+    "#": {
+        "server": "gi0.BashOrigin.org/express"
+    },
+
+    ":server:": "server @ server/v0",
+
+
+    "gi0.PINF.it/core/v0 @ # :server: set() config": { 
+        "port": 3000,
+        "routes": {
+            "/": "<head><title>Hello World</title></head><body>Hello World!</body>\n"
+        }
+    },
+
+    "gi0.PINF.it/core/v0 @ # :server: run() start": "",
+
+    "# run": (run.bash.progress () >>>
+
+        echo "---"
+        curl -s http://localhost:3000/
+        echo "---"
+
+    <<<),
+
+    "gi0.PINF.it/core/v0 @ # :server: run() stop": ""
+}

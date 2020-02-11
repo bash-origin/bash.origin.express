@@ -267,6 +267,11 @@ exports.hookRoutes = function (app, routes) {
 
 exports.forConfig = function (config, callback) {
 
+    let autostart = true;
+    if (typeof config.autostart !== 'undefined') {
+        autostart = config.autostart;
+    }
+
     var CONFIG = {};
     try {
         if (typeof config === "string") {
@@ -359,12 +364,37 @@ exports.forConfig = function (config, callback) {
 
 
 
-    console.log("Server: http://localhost:" + parseInt(PORT) + "/");
-
 
     server = HTTP.createServer(app);
 
     server = HTTP_SHUTDOWN(server);
+
+
+    if (autostart === false) {
+        return callback(null, {
+            start: async function () {
+
+                console.log("Server: http://localhost:" + parseInt(PORT) + "/");
+
+                return new Promise(function (resolve, reject) {
+                    server.listen(parseInt(PORT), "127.0.0.1", function (err) {
+                        if (err) return reject(err);
+                        return resolve(null);
+                    });
+                });
+            },
+            stop: async function () {
+                return new Promise(function (resolve, reject) {
+                    server.close(function (err) {
+                        if (err) return reject(err);
+                        return resolve(null);
+                    });
+                });
+            }
+        });
+    }
+
+    console.log("Server: http://localhost:" + parseInt(PORT) + "/");
 
     server.listen(parseInt(PORT), "127.0.0.1", function (err) {
         if (err) {

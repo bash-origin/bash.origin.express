@@ -1,0 +1,8 @@
+[bash.origin.express] Adding route: /
+Server: http://localhost:3000/
+---
+[bash.origin.express] Routing request / with method GET due to route /
+127.0.0.1 - "GET / HTTP/1.1" 200 - "-"
+<head><title>Hello World</title></head><body>Hello World!</body>
+---
+OK
