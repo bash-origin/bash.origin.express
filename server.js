@@ -28,7 +28,8 @@ const MIME_TYPES = LIB.MIME_TYPES;
 const BO = LIB.BASH_ORIGIN;
 
 
-exports.hookRoutes = function (app, routes) {
+exports.hookRoutes = function (app, routes, options) {
+    options = options || {};
 
     if (typeof routes === "undefined") {
         routes = app;
@@ -45,22 +46,22 @@ exports.hookRoutes = function (app, routes) {
     // Sort routes as best as we can
     var keys = [];
     keys = Object.keys(routes).map(function (route) {
-            return [
-                route
-                    .replace(/^\^/, "")
-                    .replace(/\\\//g, "/")
-                    .replace(/\(.*$/g, ""),
-                route
-            ];
-        })
-        .sort(function (a, b) {
-            if (a[0].length < b[0].length) {
-                return 1;
-            } else {
-                return -1;
-            }
-            return 0;
-        });
+        return [
+            route
+                .replace(/^\^/, "")
+                .replace(/\\\//g, "/")
+                .replace(/\(.*$/g, ""),
+            route
+        ];
+    })
+    .sort(function (a, b) {
+        if (a[0].length < b[0].length) {
+            return 1;
+        } else {
+            return -1;
+        }
+        return 0;
+    });
 
     keys.forEach(function (route) {
         route = route[1];
@@ -69,7 +70,9 @@ exports.hookRoutes = function (app, routes) {
         var routeApp = null;
 
         if (typeof routeImpl === "function") {
-            routeApp = routeImpl();
+            routeApp = routeImpl({
+                registerPathOnChangedHandler: options.registerPathOnChangedHandler
+            });
         } else
         if (typeof routeImpl === "object") {
             var keys = Object.keys(routeImpl);
@@ -142,7 +145,7 @@ exports.hookRoutes = function (app, routes) {
                 ];
             } else {
                 var contentType = MIME_TYPES.lookup(routeImpl) || null;
-                routeApp = function (req, res, next) {                    
+                routeApp = function (req, res, next) {                
                     FS.readFile(routeImpl, "utf8", function (err, data) {
                         if (err) {
                             err.message += " (for route '" + route + "')";
@@ -206,7 +209,7 @@ exports.hookRoutes = function (app, routes) {
                     PORT: parseInt(app.PORT),
                     config: app.config,
                     hookRoutes: function (routes) {
-                        return exports.hookRoutes(app, routes);
+                        return exports.hookRoutes(app, routes, options);
                     }
                 }
             }, {
