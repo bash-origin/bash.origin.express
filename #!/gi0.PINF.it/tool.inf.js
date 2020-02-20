@@ -5,8 +5,7 @@ exports['gi0.pinf.it/core/v0/tool'] = async function (workspace, LIB) {
 
         if (/\/server\/v0$/.test(instance.kindId)) {
 
-            const SERVER = require("./server");
-            LIB.Promise.promisifyAll(SERVER);
+            const SERVER = require("../../server");
 
             let server = null;
 
@@ -17,8 +16,7 @@ exports['gi0.pinf.it/core/v0/tool'] = async function (workspace, LIB) {
                     if (invocation.mount.path === 'start') {
 
                         const config = invocation.config.config;
-                        config.autostart = false;
-                        server = await SERVER.forConfigAsync(config);
+                        server = await SERVER.forConfig(config);
                         await server.start();
 
                     } else

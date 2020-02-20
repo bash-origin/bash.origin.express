@@ -19,11 +19,15 @@ CALL_process run {
             }
 
             CALL_server run {
+                "variables": {
+                    "title": "Hello World",
+                    "body": function /* CodeBlock */ (options) {
+                        return "Hello World!";
+                    }
+                },
                 "routes": {
-                    "/code.js": {
-                        "@it.pinf.org.browserify#s1": {
-                            "src": "$__DIRNAME__/code.js"
-                        }
+                    "/": function /* CodeBlock */ (options) {
+                        return "<head><title>" + options.variables.title + "</title></head><body>" + options.variables.body + "</body>";
                     }
                 }
             }
@@ -31,8 +35,8 @@ CALL_process run {
         <<<),
         "routes": {
             "alive": {
-                "uri": "/code.js",
-                "expect": "/window.hello = \"world\";/",
+                "uri": "/",
+                "expect": "<head><title>Hello World</title></head><body>Hello World!</body>",
                 "exit": true
             }
         }

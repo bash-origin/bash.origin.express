@@ -3,20 +3,19 @@
 echo ">>>TEST_IGNORE_LINE:Waiting until program <<<"
 
 depend {
-    "process": "@com.github/bash-origin/bash.origin.process#s1"
+    "process": "bash.origin.process # runner/v0"
 }
 
-CALL_process run "bash.origin.express~01-HelloWorld" {
+CALL_process run {
     "server": {
         "env": {
-            # TODO: Use dynamic port
-            "PORT": "3000"
+            "PORT": 3000
         },
         "run": (bash () >>>
             #!/usr/bin/env bash.origin.script
 
             depend {
-                "server": "@com.github/bash-origin/bash.origin.express#s1"
+                "server": "bash.origin.express # server/v0"
             }
 
             CALL_server run {

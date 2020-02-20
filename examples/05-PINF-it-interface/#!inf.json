@@ -3,7 +3,7 @@
     "#": "gi0.PINF.it/core/v0",
 
     "#": {
-        "server": "gi0.BashOrigin.org/express"
+        "server": "bash.origin.express"
     },
 
     ":server:": "server @ server/v0",

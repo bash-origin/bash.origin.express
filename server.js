@@ -1,22 +1,8 @@
 
-// TODO: Do this as part of a first-run hook.
-const PATH = require("path");
-const NFS = require("fs");
-const CHILD_PROCESS = require("child_process");
-if (!NFS.existsSync(PATH.join(__dirname, '.~lib.json'))) {
-    if (NFS.existsSync(PATH.join(__dirname, 'node_modules/.bin/lib.json'))) {
-        CHILD_PROCESS.execSync('lib.json from node_modules > .~lib.json', {
-            cwd: __dirname
-        });
-    } else {
-        CHILD_PROCESS.execSync('lib.json from node_modules > .~lib.json', {
-            cwd: __dirname
-        });
-    }
-}
-
 const LIB = require("bash.origin.lib").forPackage(__dirname).js;
 
+const Promise = LIB.BLUEBIRD;
+const PATH = LIB.PATH;
 const FS = LIB.FS_EXTRA;
 const HTTP = LIB.http;
 const EXPRESS = LIB.EXPRESS;
@@ -24,28 +10,31 @@ const HTTP_SHUTDOWN = LIB.HTTP_SHUTDOWN;
 const BODY_PARSER = LIB.BODY_PARSER;
 const MORGAN = LIB.MORGAN;
 const CODEBLOCK = LIB.CODEBLOCK;
+const GET_PORT = LIB.GET_PORT;
 const MIME_TYPES = LIB.MIME_TYPES;
 const BO = LIB.BASH_ORIGIN;
 
 
-exports.hookRoutes = function (app, routes, options) {
+exports.hookRoutes = async function (router, routes, options) {
     options = options || {};
 
-    if (typeof routes === "undefined") {
-        routes = app;
-        app = new EXPRESS();
-    }
+    router = router || new EXPRESS();
 
+    // TODO: Use more specific VERBOSE flag.
     if (process.env.VERBOSE) {
-        app.use(function (req, res, next) {
+        router.use(function (req, res, next) {
             console.log("[bash.origin.express] Request:", req.method, req.url);
             return next();
         });
     }
 
-    // Sort routes as best as we can
-    var keys = [];
-    keys = Object.keys(routes).map(function (route) {
+    if (!routes) {
+        throw new Error(`No 'routes' to hook specified!`);
+    }
+
+    // Sort routes as best as we can from longest to shortest.
+    var sortedRoutes = [];
+    sortedRoutes = Object.keys(routes).map(function (route) {
         return [
             route
                 .replace(/^\^/, "")
@@ -53,8 +42,7 @@ exports.hookRoutes = function (app, routes, options) {
                 .replace(/\(.*$/g, ""),
             route
         ];
-    })
-    .sort(function (a, b) {
+    }).sort(function (a, b) {
         if (a[0].length < b[0].length) {
             return 1;
         } else {
@@ -63,7 +51,7 @@ exports.hookRoutes = function (app, routes, options) {
         return 0;
     });
 
-    keys.forEach(function (route) {
+    await Promise.mapSeries(sortedRoutes, async function (route) {
         route = route[1];
 
         var routeImpl = routes[route];
@@ -83,10 +71,31 @@ exports.hookRoutes = function (app, routes, options) {
                 var implId = keys[0].replace(/^@/, "");
                 var implConfig = routeImpl[keys[0]];
 
-                implConfig.variables = implConfig.variables || {};
-                implConfig.variables.PORT = app.PORT;
+                const vars = {};
+                if (options.variables) {
+                    Object.keys(options.variables).forEach(function (name) {
+                        vars[name] = options.variables[name];
+                    });
+                }
+                if (implConfig.variables) {
+                    Object.keys(implConfig.variables).forEach(function (name) {
+                        vars[name] = implConfig.variables[name];
+                    });
+                }
+                if (options.env) {
+                    Object.keys(options.env).forEach(function (name) {
+                        vars[name] = options.env[name];
+                    });
+                }            
+                implConfig.variables = vars;
 
                 var implMod = BO.depend(implId, implConfig);
+
+console.log("implId:", implId);
+console.log("implConfig:", implConfig);
+console.log("implMod:", implMod);
+// Invoke PINF.it interface.
+throw new Error(`NYI`);
 
                 if (implMod["#io.pinf/middleware~s1"]) {
 
@@ -94,7 +103,7 @@ exports.hookRoutes = function (app, routes, options) {
 
                     routeApp = impl({
                         SERVER: {
-                            stop: app.stopServer
+                            stop: router.stopServer
                         }
                     });
 
@@ -144,6 +153,7 @@ exports.hookRoutes = function (app, routes, options) {
                     routeImpl
                 ];
             } else {
+                // TODO: Use static file server.
                 var contentType = MIME_TYPES.lookup(routeImpl) || null;
                 routeApp = function (req, res, next) {                
                     FS.readFile(routeImpl, "utf8", function (err, data) {
@@ -168,13 +178,14 @@ exports.hookRoutes = function (app, routes, options) {
             Array.isArray(routeImpl)
         ) {
             // Serve files.
+            // TODO: Use static file server.
 
-//console.log("SETUP ROUTE APP", routeImpl);            
+//console.log("SETUP ROUTE APP", routeImpl);
             routeApp = function (req, res, next) {
 
                 var subPath = req.url.replace(req.route.path, "");
 //console.log("subPath", subPath);
-                
+
                 var path = null;
                 for (var i=0; i<routeImpl.length;i++) {
                     path = PATH.join(routeImpl[i], subPath);
@@ -202,14 +213,18 @@ exports.hookRoutes = function (app, routes, options) {
             };
         }
 
-        if (!routeApp) {
-            routeApp = CODEBLOCK.run(routeImpl, {
+        if (
+            !routeApp &&
+            CODEBLOCK.isCodeblock(routeImpl)
+        ) {
+            routeApp = await CODEBLOCK.runAsync(routeImpl, {
                 options: {
                     "EXPRESS": EXPRESS,
-                    PORT: parseInt(app.PORT),
-                    config: app.config,
-                    hookRoutes: function (routes) {
-                        return exports.hookRoutes(app, routes, options);
+                    PORT: options.port,
+                    env: options.env || {},
+                    variables: options.variables || {},
+                    hookRoutes: async function (routes) {
+                        return exports.hookRoutes(router, routes, options);
                     }
                 }
             }, {
@@ -219,11 +234,18 @@ exports.hookRoutes = function (app, routes, options) {
                     setTimeout: setTimeout
                 }
             });
+        } else
+        if (
+            !routeApp &&
+            typeof routeImpl === 'string'
+        ) {
+            routeApp = routeImpl;
         }
 
+        // If the 'routeApp' ends up being a string we serve it with a mime type determined by the 'route'.
         if (typeof routeApp === "string") {
             var routeResponse = routeApp;
-            var contentType = MIME_TYPES.lookup(routeImpl) || null;
+            var contentType = MIME_TYPES.lookup(route) || null;
             routeApp = function (req, res, next) {
                 if (contentType) {
                     res.writeHead(200, {
@@ -239,6 +261,7 @@ exports.hookRoutes = function (app, routes, options) {
         if (/^\^/.test(route)) {
             route = new RegExp(route);
         }
+        // TODO: Do not log in silent mode.
         console.log("[bash.origin.express] Adding route:", route);
 
         // TODO: Relocate to pinf.io helper
@@ -251,64 +274,90 @@ exports.hookRoutes = function (app, routes, options) {
 
             req.url = "/" + reqOriginal.url.replace(new RegExp(routeStr + '(.*)$'), "$1").replace(/^\//, "");
             req.mountAt = reqOriginal.url.substring(0, reqOriginal.url.length - req.url.length + 1);
-                        
-            if (true || process.env.VERBOSE) {
+
+            if (process.env.VERBOSE) {
                 console.log("[bash.origin.express] Routing request", req.url, "with method", req.method ,"due to route", route);
             }
 
             return routeApp(req, res, next);
         };
 
-        app.get(route, routeWrapper);
-        app.post(route, routeWrapper);            
+        router.get(route, routeWrapper);
+        router.post(route, routeWrapper);            
     });
 
-    return app;
+    return router;
+}
+
+
+async function getPort (config) {
+    if (process.env.PORT) {
+        return parseInt(process.env.PORT);
+    }
+    if (config.port) {
+        return parseInt(config.port);
+    }
+    if (config.env && config.env.PORT) {
+        return parseInt(config.env.PORT);
+    }
+    // TODO: Use pinf.it cache file layout to store port.
+    const portCachePath = PATH.join(config.basedir, '.~bash-origin-express-port');
+    let port = null;
+    if (await FS.exists(portCachePath)) {
+        port = await GET_PORT({
+            port: parseInt(await FS.readFile(portCachePath, 'utf8'))
+        });
+    } else {
+        port = await GET_PORT();
+    }
+    await FS.writeFile(portCachePath, `${port}`, 'utf8');
+    return port;
 }
 
 
 
-exports.forConfig = function (config, callback) {
+exports.forConfig = async function (config) {
 
-    let autostart = true;
-    if (typeof config.autostart !== 'undefined') {
-        autostart = config.autostart;
-    }
-
-    var CONFIG = {};
     try {
-        if (typeof config === "string") {
-            CONFIG = CODEBLOCK.thawFromJSON(config);
-        } else {
-            CONFIG = config;
-        }
+//        if (typeof config === "string") {
+            config = CODEBLOCK.thawFromJSON(config);
+//        }
     } catch (err) {
-        console.error(err.stack);
+        console.error("config:", config);
+        console.error(`Error thawing config:`, err.stack);
         process.exit(1);
     }
 
-    const PORT = (CONFIG.port && parseInt(CONFIG.port)) || (process.env.PORT && parseInt(process.env.PORT)) || 8080;
+    config.basedir = (config.basedir && PATH.resolve(process.cwd(), config.basedir)) || process.cwd();
+    config.port = await getPort(config);
+    if (config.variables) {
+        config.variables = CODEBLOCK.runAll(config.variables);
+    } else {
+        config.variables = {};
+    }
+    config.env = config.env || {};
+    config.env.PORT = config.port;
 
 
-    const app = EXPRESS();
-    app.disable('x-powered-by');
+    const router = EXPRESS();
+    router.disable('x-powered-by');
 
-    app.PORT = PORT;
-
-    app.use(function (req, res, next) {
+    // TODO: Optionally disable.
+    router.use(function (req, res, next) {
         var origin = null;
         if (req.headers.origin) {
             origin = req.headers.origin;
+            // TODO: Configurable white-list.
         } else
         if (req.headers.host) {
-            origin = [
-                "http://",
-                req.headers.host
-            ].join("");
+            // TODO: Optionally use HTTPS.
+            origin = `http://${req.headers.host}`;
         }
         res.setHeader("Access-Control-Allow-Credentials", "true");
         res.setHeader("Access-Control-Allow-Origin", origin);
+        // TODO: Make configurable.
         res.setHeader("Access-Control-Allow-Methods", "GET, PUT, POST, DELETE");
+        // TODO: Make configurable.
         res.setHeader("Access-Control-Allow-Headers", "X-Requested-With, X-HTTP-Method-Override, Content-Type, Accept, Cookie");
         if (req.method === "OPTIONS") {
             return res.end();
@@ -317,101 +366,76 @@ exports.forConfig = function (config, callback) {
         return next();
     });
 
-
-    app.get(/^\/favicon\.(ico|png)$/, function (req, res, next) {
+    // TODO: Optionally disable route.
+    router.get(/^\/favicon\.(ico|png)$/, function (req, res, next) {
         res.writeHead(204);
         return res.end();
     });
 
     //app.use(MORGAN(':remote-addr - ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent"'));
-    app.use(MORGAN(':remote-addr - ":method :url HTTP/:http-version" :status :res[content-length] ":referrer"'));
-    app.use(BODY_PARSER.json());
-    app.use(BODY_PARSER.urlencoded({
+    router.use(MORGAN(':remote-addr - ":method :url HTTP/:http-version" :status :res[content-length] ":referrer"'));
+    // TODO: Optionally disable.
+    router.use(BODY_PARSER.json());
+    // TODO: Optionally disable.
+    router.use(BODY_PARSER.urlencoded({
         extended: false
     }));
 
-
-    var config = CONFIG.config || {};
-    config = CODEBLOCK.runAll(config);
-    app.config = config;
-    
-    var server = null;
-
-    app.stopServer = function stopServer (callback) {
-        if (!server.listening) {
-            if (callback) callback();
-            return;
-        }
-        server.unref();
-        server.shutdown(callback);
+    if (config.routes) {
+        await exports.hookRoutes(router, config.routes, {
+            port: config.port,
+            env: config.env,
+            variables: config.variables
+        });
     }
 
-    if (CONFIG.routes) {
-        exports.hookRoutes(app, CONFIG.routes);
-    }
-
-    app.use(EXPRESS.static(PATH.join(__dirname, 'www')));
-
-
-    app.use(function (req, res, next) {
+    // TODO: Make configurable.
+    router.use(function (req, res, next) {
         const err = new Error("[bash.origin.express] Url '" + req.url + "' not found (mountAt: " + (req.mountAt || "") + ", originalUrl: " + (req.originalUrl || "") + ")");
         err.status = 404;
         return next(err);
     });
 
-    app.use(function (err, req, res, next) {
+    // TODO: Make configurable.
+    router.use(function (err, req, res, next) {
         console.error("ERROR:", err.stack);
         res.status(err.status || 500);
         res.end("ERROR: " + err.message);
     });
 
 
+    let server = HTTP.createServer(router);
 
-
-    server = HTTP.createServer(app);
-
-    server = HTTP_SHUTDOWN(server);
-
-
-    if (autostart === false) {
-        return callback(null, {
-            start: async function () {
-
-                console.log("Server: http://localhost:" + parseInt(PORT) + "/");
-
-                return new Promise(function (resolve, reject) {
-                    server.listen(parseInt(PORT), "127.0.0.1", function (err) {
-                        if (err) return reject(err);
-                        return resolve(null);
-                    });
-                });
-            },
-            stop: async function () {
-                return new Promise(function (resolve, reject) {
-                    server.close(function (err) {
-                        if (err) return reject(err);
-                        return resolve(null);
-                    });
-                });
-            }
+    router.stopServer = async function stopServer () {
+        if (!server.listening) {
+            return;
+        }
+        //server.unref();
+        return new Promise(function (resolve, reject) {
+            server.shutdown(function (err) {
+                if (err) return reject(err);
+                return resolve();
+            });
         });
     }
+    server = HTTP_SHUTDOWN(server);
 
-    console.log("Server: http://localhost:" + parseInt(PORT) + "/");
+    return {
+        start: async function () {
 
-    server.listen(parseInt(PORT), "127.0.0.1", function (err) {
-        if (err) {
-            if (callback) {
-                return callback(err);
-            }
-            console.error(err.stack);
-            process.exit(1);
+            return new Promise(function (resolve, reject) {
+                server.listen(config.port, "127.0.0.1", function (err) {
+                    if (err) return reject(err);
+
+                    console.log("Server: http://localhost:" + config.port + "/");
+                    return resolve();
+                });
+            });
+        },
+        stop: async function () {
+            return router.stopServer();
         }
-
-        console.log("[READY]");
-
-        return callback(null, server);
-    });
+    };
 }
 
 
@@ -419,6 +443,24 @@ exports.runForTestHooks = function (before, after, config) {
 
     var server = null;
 
+    before(async function () {
+        server = await exports.forConfig(config);
+    });
+
+    after(async function (client) {
+        if (!server) {
+            throw new Error("[bash.origin.express] Cannot close server as it was never started!");
+        }
+        if (client && typeof client.end === 'function') {
+            client.end(function () {
+                return server.stop();
+            });
+        } else {
+            return server.stop();
+        }
+    });
+
+    /*
     before(function (client, done) {
         
         if (typeof done === "undefined") {
@@ -453,16 +495,18 @@ exports.runForTestHooks = function (before, after, config) {
         } else {
             server.close(done);
         }
-    });    
-}
-
-
-if (require.main === module) {
-
-    exports.forConfig(process.argv[2], function (err) {
-        if (err) {
-            console.error(err.stack);
-            process.exit(1);
-        }
     });
+    */
 }
+
+/*
+// TODO: Add test for this code path.
+if (require.main === module) {
+    try {
+        exports.forConfig(process.argv[2]);
+    } catch (err) {
+        console.error(err.stack);
+        process.exit(1);
+    }
+}
+*/
