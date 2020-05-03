@@ -1,0 +1,11 @@
+>>>TEST_IGNORE_LINE:\d+\spassing\s\([^\)]+\)<<<
+>>>TEST_IGNORE_LINE:^Server:<<<
+
+
+  Suite
+[bash.origin.express] Adding route: /
+127.0.0.1 - "GET / HTTP/1.1" 200 - "-"
+    ✓ Test
+
+
+

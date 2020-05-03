@@ -1,5 +1,7 @@
 #!/usr/bin/env bash.origin.script
 
+[ ! -e ".~" ] || rm -Rf .~
+
 echo ">>>TEST_IGNORE_LINE:Waiting until program <<<"
 
 depend {
@@ -23,7 +25,7 @@ CALL_process run {
                     "/code.js": {
                         "gi0.PINF.it/build/v0 # /.dist # /code.js": {
                             "@it.pinf.org.browserify # router/v1": {
-                                "src": "$__DIRNAME__/code.js"
+                                "src": "$__DIRNAME__/../04-Browserify/code.js"
                             }
                         }
                     }

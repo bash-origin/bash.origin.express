@@ -3,7 +3,7 @@ const LIB = require("bash.origin.lib").forPackage(__dirname).js;
 
 const Promise = LIB.BLUEBIRD;
 const PATH = LIB.PATH;
-const FS = LIB.FS_EXTRA;
+let FS = LIB.FS_EXTRA;
 const HTTP = LIB.http;
 const EXPRESS = LIB.EXPRESS;
 const HTTP_SHUTDOWN = LIB.HTTP_SHUTDOWN;
@@ -15,8 +15,19 @@ const MIME_TYPES = LIB.MIME_TYPES;
 const BO = LIB.BASH_ORIGIN;
 
 
+let subContextUniqueIndex = 0;
+
 exports.hookRoutes = async function (router, routes, options) {
     options = options || {};
+
+    if (options.LIB) {
+        FS = options.LIB.FS;
+        LIB.FS = FS;
+        LIB.FS_EXTRA = FS;
+    }
+
+    options.basedir = (options.basedir && PATH.resolve(process.cwd(), options.basedir)) || process.cwd();
+    options.mountPrefix = options.mountPrefix || null;
 
     router = router || new EXPRESS();
 
@@ -57,6 +68,8 @@ exports.hookRoutes = async function (router, routes, options) {
         var routeImpl = routes[route];
         var routeApp = null;
 
+// console.error("routeImpl11", route, routeImpl);
+
         if (typeof routeImpl === "function") {
             routeApp = routeImpl({
                 registerPathOnChangedHandler: options.registerPathOnChangedHandler
@@ -64,9 +77,11 @@ exports.hookRoutes = async function (router, routes, options) {
         } else
         if (typeof routeImpl === "object") {
             var keys = Object.keys(routeImpl);
+
+            // DEPRECATED
             if (
                 keys.length === 1 &&
-                /^@.+\./.test(keys[0])
+                /^@.+/.test(keys[0])
             ) {
                 var implId = keys[0].replace(/^@/, "");
                 var implConfig = routeImpl[keys[0]];
@@ -89,74 +104,178 @@ exports.hookRoutes = async function (router, routes, options) {
                 }            
                 implConfig.variables = vars;
 
-                var implMod = BO.depend(implId, implConfig);
+// console.error("implId 22", implId);
 
-console.log("implId:", implId);
-console.log("implConfig:", implConfig);
-console.log("implMod:", implMod);
-// Invoke PINF.it interface.
-throw new Error(`NYI`);
+                if (LIB['@pinf-it/core'].isToolPointer(implId)) {
 
-                if (implMod["#io.pinf/middleware~s1"]) {
+// console.error("[express] options.basedir", options.basedir, 'options.mountPrefix', options.mountPrefix, "implConfig['it.pinf.core_mountPrefix']", implConfig['it.pinf.core_mountPrefix'], 'route', route);
 
-                    var impl = implMod["#io.pinf/middleware~s1"];
-
-                    routeApp = impl({
-                        SERVER: {
-                            stop: router.stopServer
-                        }
-                    });
-
-                } else
-                if (implMod["#io.pinf/process~s1"]) {
-
-                    var impl = implMod["#io.pinf/process~s1"];
-
-                    if (typeof impl !== "function") {
-                        throw new Error("'#io.pinf/process~s1' API not found in '" + implId + "'!");
+                    if (
+                        !implConfig.dist &&
+                        !/^\^/.test(route)
+                    ) {
+                        implConfig.dist = route;
                     }
 
-                    var contentType = MIME_TYPES.lookup(route) || null;
-                    routeApp = function (req, res, next) {
-                        impl(function (err, result) {
-                            if (err) {
-//                                console.error(err.stack || err);
-                                err.message += " (for route '" + route + "')";
-                                err.stack += "\n(for route '" + route + "')";
-                                return next(err);
-                            }
-                            if (contentType) {
-                                res.writeHead(200, {
-                                    "Content-Type": contentType
-                                });
-                            }
-                            res.end(result);
-                        });
-                    };                        
+                    // if (!implConfig.dist) {
+                    //     throw new Error(`'dist' not set for implId '${implId}'!`);
+                    // }
+
+                    let mountPrefix = LIB.PATH.join(options.mountPrefix || '', implConfig['it.pinf.core_mountPrefix'] || '');
+                    if (mountPrefix === '.') {
+                        mountPrefix = '';
+                    }
+
+// console.error("USE MOUNT PREFIX::", mountPrefix);                    
+                    const app = await LIB['@pinf-it/core']({
+                        cwd: options.basedir,
+                        mountPrefix: mountPrefix
+                    }).getRouteApp(implId, {
+                        mountPath: (implConfig.dist && LIB.PATH.resolve('/', implConfig.dist)) || '/'
+                    });
+                    delete implConfig.dist;
+                    delete implConfig['it.pinf.core_mountPrefix'];
+
+                    // TODO: Pass this in differently (not part of the config).
+                    implConfig.SERVER = (options.API && options.API.SERVER) || {
+                        stop: router.stopServer
+                    };
+
+                    if (
+                        !app ||
+                        typeof app !== 'function'
+                    ) {
+                        console.error("app:", app);
+                        console.error("implConfig:", implConfig);
+                        throw new Error(`No getRouteApp() for implId '${implId}'!`);
+                    }
+
+                    routeApp = await app(implConfig);
+
+                    if (
+                        !routeApp ||
+                        typeof routeApp !== 'function'
+                    ) {
+                        console.error("implConfig:", implConfig);
+                        console.error("app:", app);
+                        console.error("routeApp:", routeApp);
+                        throw new Error(`'routeApp' not set!`);
+                    }
 
                 } else {
-                    throw new Error("Module '" + implId + "' does not export API on namespace '#io.pinf/middleware~s1' nor #io.pinf/process~s1'!");
+
+                    const implMod = BO.depend(implId, implConfig);
+
+                    if (implMod["#io.pinf/middleware~s1"]) {
+
+                        var impl = implMod["#io.pinf/middleware~s1"];
+
+                        routeApp = impl({
+                            SERVER: {
+                                stop: router.stopServer
+                            }
+                        });
+
+                    } else
+                    if (implMod["#io.pinf/process~s1"]) {
+
+                        var impl = implMod["#io.pinf/process~s1"];
+
+                        if (typeof impl !== "function") {
+                            throw new Error("'#io.pinf/process~s1' API not found in '" + implId + "'!");
+                        }
+
+                        var contentType = MIME_TYPES.lookup(route) || null;
+                        routeApp = function (req, res, next) {
+                            impl(function (err, result) {
+                                if (err) {
+    //                                console.error(err.stack || err);
+                                    err.message += " (for route '" + route + "')";
+                                    err.stack += "\n(for route '" + route + "')";
+                                    return next(err);
+                                }
+                                if (contentType) {
+                                    res.writeHead(200, {
+                                        "Content-Type": contentType
+                                    });
+                                }
+                                res.end(result);
+                            });
+                        };                        
+
+                    } else {
+                        throw new Error("Module '" + implId + "' does not export API on namespace '#io.pinf/middleware~s1' nor #io.pinf/process~s1'!");
+                    }
                 }
+            } else
+            if (
+                keys.length === 1 &&
+                /^([^\s]+)\s*#\s*([^\s]+)\s*#\s*([^\s]+)$/.test(keys[0])
+            ) {
+                const modelTargetPointer = keys[0].match(/^([^\s]+)\s*#\s*([^\s]+)\s*#\s*([^\s]+)$/);
+                const toolPointer = Object.keys(routeImpl[keys[0]])[0];
+                const toolConfig = routeImpl[keys[0]][toolPointer];
+
+// console.log("NEW ROUTER LOGIC", modelTargetPointer, toolPointer, toolConfig);
+// console.log("options.mountPrefix", options.mountPrefix);
+// console.log("target path", LIB.PATH.join(options.mountPrefix || '', modelTargetPointer[2]));
+
+                subContextUniqueIndex += 1;
+
+                routeApp = await LIB['@pinf-it/core']({
+                    cwd: options.basedir,
+                    contextId: subContextUniqueIndex
+                }).runToolForModel(
+                    modelTargetPointer[1],
+                    `/${LIB.PATH.join(options.mountPrefix || '/', modelTargetPointer[2] || '/')}`.replace(/\/\//g, '/'),
+                    `/${LIB.PATH.join(modelTargetPointer[3] || '/')}`.replace(/\/\//g, '/'),
+                    toolPointer.replace(/^@/, ''),
+                    toolConfig,
+                    [
+                        'onHome:router',
+                        'onHome:path',
+                        'onBuild:router',
+                        'onBuild:path'
+                    ],
+                    {
+                        // TODO: Namespace this API.
+                        SERVER: {
+                            middleware: {
+                                static: EXPRESS.static
+                            },
+                            stop: router.stopServer || (options.API && options.API.SERVER && options.API.SERVER.stop) || null
+                        }
+                    }
+                );
+
+                if (typeof routeApp === 'string') {
+                    routeImpl = routeApp;
+                    routeApp = null;
+                }
+// console.log("routeImpl", routeImpl);
+// console.log("routeApp", routeApp);
             }
         }
 
         if (
             !routeApp &&
             typeof routeImpl === "string" &&
-            /^\//.test(routeImpl)
+            /^\/|^\./.test(routeImpl)
         ) {
-            if (!FS.existsSync(routeImpl)) {
-                FS.mkdirsSync(routeImpl);
+            const absRouteImpl = PATH.resolve(options.basedir, routeImpl);
+            
+            if (!FS.existsSync(absRouteImpl)) {
+                FS.mkdirsSync(absRouteImpl);
             }
-            if (FS.statSync(routeImpl).isDirectory()) {
+            if (FS.statSync(absRouteImpl).isDirectory()) {
                 routeImpl = [
-                    routeImpl
+                    absRouteImpl
                 ];
             } else {
                 // TODO: Use static file server.
-                var contentType = MIME_TYPES.lookup(routeImpl) || null;
+                var contentType = MIME_TYPES.lookup(absRouteImpl) || null;
                 routeApp = function (req, res, next) {                
-                    FS.readFile(routeImpl, "utf8", function (err, data) {
+                    FS.readFile(absRouteImpl, "utf8", function (err, data) {
                         if (err) {
                             err.message += " (for route '" + route + "')";
                             err.stack += "\n(for route '" + route + "')";
@@ -180,22 +299,40 @@ throw new Error(`NYI`);
             // Serve files.
             // TODO: Use static file server.
 
-//console.log("SETUP ROUTE APP", routeImpl);
             routeApp = function (req, res, next) {
 
-                var subPath = req.url.replace(req.route.path, "");
-//console.log("subPath", subPath);
+                // console.log("CHECK PATH: req.url", req.url);
+                // console.log("CHECK PATH: req.route.path", req.route.path);
+
+                var subPath = req.url;//.replace(req.route.path, "");
+
+                if (subPath === '') {
+                    subPath = 'index.html';
+                }
+
+                // console.log("CHECK PATH: req.mountAt", req.mountAt);
+                // console.log("CHECK PATH: routeImpl", routeImpl);
+                // console.log("CHECK PATH: subPath", subPath);
+                // console.log("CHECK PATH: options.basedir", options.basedir);
 
                 var path = null;
                 for (var i=0; i<routeImpl.length;i++) {
-                    path = PATH.join(routeImpl[i], subPath);
+                    path = PATH.resolve(options.basedir, PATH.join(routeImpl[i], subPath));
+
                     if (FS.existsSync(path)) {
                         break;
                     } else {
                         path = null;
                     }
-                }                
+                }
+
                 if (!path) {
+                    if (/^sm\/[0-9a-z]+\.map$/.test(subPath)) {
+                        res.writeHead(204);
+                        res.end('');
+                        return;
+                    }
+
                     return next(new Error("File for URI '" + req.url + "' not found in paths '" + routeImpl.join(", ") + "'!"));
                 }
 
@@ -218,6 +355,9 @@ throw new Error(`NYI`);
             CODEBLOCK.isCodeblock(routeImpl)
         ) {
             routeApp = await CODEBLOCK.runAsync(routeImpl, {
+                ___PWD___: options.basedir,
+                LIB: LIB,
+                API: options.API,
                 options: {
                     "EXPRESS": EXPRESS,
                     PORT: options.port,
@@ -257,6 +397,15 @@ throw new Error(`NYI`);
             }
         }
 
+        if (
+            !routeApp ||
+            typeof routeApp !== 'function'
+        ) {
+            console.error("routeImpl:", routeImpl);
+            console.error("routeApp:", routeApp);
+            throw new Error(`'routeApp' not set!`);
+        }
+
         var routeStr = route;
         if (/^\^/.test(route)) {
             route = new RegExp(route);
@@ -278,8 +427,13 @@ throw new Error(`NYI`);
             if (process.env.VERBOSE) {
                 console.log("[bash.origin.express] Routing request", req.url, "with method", req.method ,"due to route", route);
             }
+            try {
+                return routeApp(req, res, next);
+            } catch (err) {
 
-            return routeApp(req, res, next);
+console.error("Error for route:", route);
+                next(err);
+            }
         };
 
         router.get(route, routeWrapper);
@@ -315,8 +469,12 @@ async function getPort (config) {
 }
 
 
+exports.forConfig = async function (config, options) {
 
-exports.forConfig = async function (config) {
+//console.log("config", config.routes['/dist/script.browser.js']['gi0.PINF.it/build/v0 # /dist # /script.browser.js']['@it.pinf.org.browserify # router/v1'].inject);
+
+    options = options || {};
+    if (options.LIB) FS = options.LIB.FS;
 
     try {
 //        if (typeof config === "string") {
@@ -327,6 +485,8 @@ exports.forConfig = async function (config) {
         console.error(`Error thawing config:`, err.stack);
         process.exit(1);
     }
+
+//console.log("config", config.routes['/dist/script.browser.js']['gi0.PINF.it/build/v0 # /dist # /script.browser.js']['@it.pinf.org.browserify # router/v1'].inject);
 
     config.basedir = (config.basedir && PATH.resolve(process.cwd(), config.basedir)) || process.cwd();
     config.port = await getPort(config);
@@ -363,6 +523,10 @@ exports.forConfig = async function (config) {
             return res.end();
         }
         req.EXPRESS = EXPRESS;
+
+        // TODO: Pass the 'stopServer' method when initializing middleware. Not here.
+        req.stopServer = router.stopServer;
+
         return next();
     });
 
@@ -381,11 +545,26 @@ exports.forConfig = async function (config) {
         extended: false
     }));
 
+    router.stopServer = async function stopServer () {
+        if (!server.listening) {
+            return;
+        }
+        //server.unref();
+        return new Promise(function (resolve, reject) {
+            server.shutdown(function (err) {
+                if (err) return reject(err);
+                resolve();
+            });
+        });
+    }
+
     if (config.routes) {
         await exports.hookRoutes(router, config.routes, {
+            basedir: config.basedir,
             port: config.port,
             env: config.env,
-            variables: config.variables
+            variables: config.variables,
+            mountPrefix: config.mountPrefix || null
         });
     }
 
@@ -406,29 +585,23 @@ exports.forConfig = async function (config) {
 
     let server = HTTP.createServer(router);
 
-    router.stopServer = async function stopServer () {
-        if (!server.listening) {
-            return;
-        }
-        //server.unref();
-        return new Promise(function (resolve, reject) {
-            server.shutdown(function (err) {
-                if (err) return reject(err);
-                return resolve();
-            });
-        });
-    }
     server = HTTP_SHUTDOWN(server);
 
+//console.error("RETURN SERVER INIT!!");
+
     return {
+        config: config,
+        on: server.on.bind(server),
         start: async function () {
+
+//console.error("START SERVER!!");
 
             return new Promise(function (resolve, reject) {
                 server.listen(config.port, "127.0.0.1", function (err) {
                     if (err) return reject(err);
 
                     console.log("Server: http://localhost:" + config.port + "/");
-                    return resolve();
+                    resolve();
                 });
             });
         },
@@ -439,64 +612,43 @@ exports.forConfig = async function (config) {
 }
 
 
-exports.runForTestHooks = function (before, after, config) {
+// Needs to work with 'mocha' & 'nightwatch'.
+exports.runForTestHooks = async function (before, after, config) {
 
-    var server = null;
+    return new Promise(function (resolve) {
 
-    before(async function () {
-        server = await exports.forConfig(config);
-    });
+        let server = null;
+        let stopped = false;
 
-    after(async function (client) {
-        if (!server) {
-            throw new Error("[bash.origin.express] Cannot close server as it was never started!");
-        }
-        if (client && typeof client.end === 'function') {
-            client.end(function () {
-                return server.stop();
-            });
-        } else {
-            return server.stop();
-        }
-    });
-
-    /*
-    before(function (client, done) {
-        
-        if (typeof done === "undefined") {
-            done = client;
-            client = null;
-        }
-
-        exports.forConfig(config, function (err, _server) {
-            if (err) {
-                return done(err);
+        before(async function () {
+            server = await exports.forConfig(config);
+            if (!stopped) {
+                await server.start();
             }
-            server = _server;
-            return done();
+            if (arguments.length === 2) {
+                arguments[1]();
+            }
+            resolve(server);
+        });
+
+        after(function (client, done) {
+            if (typeof done === "undefined") {
+                done = client;
+                client = null;
+            }
+            stopped = true;
+            // if (!server) {
+                // throw new Error("[bash.origin.express] Cannot close server as it was never started!");
+            // }
+            if (client && typeof client.end === 'function') {
+                client.end(async function () {
+                    if (server) server.stop().then(done);
+                });
+            } else {
+                if (server) server.stop().then(done);
+            }
         });
     });
-
-    after(function (client, done) {
-
-        if (typeof done === "undefined") {
-            done = client;
-            client = null;
-        }
-
-        if (!server) {
-            throw new Error("Cannot close server as it was never started!");
-        }
-
-        if (client) {
-            client.end(function() {
-                server.close(done);
-            });
-        } else {
-            server.close(done);
-        }
-    });
-    */
 }
 
 /*
