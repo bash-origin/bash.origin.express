@@ -233,8 +233,8 @@ exports.hookRoutes = async function (router, routes, options) {
                     toolConfig,
                     [
                         'onHome:router',
-                        'onHome:path',
                         'onBuild:router',
+                        'onHome:path',
                         'onBuild:path'
                     ],
                     {
@@ -301,8 +301,8 @@ exports.hookRoutes = async function (router, routes, options) {
 
             routeApp = function (req, res, next) {
 
-                // console.log("CHECK PATH: req.url", req.url);
-                // console.log("CHECK PATH: req.route.path", req.route.path);
+// console.log("CHECK PATH: req.url", req.url);
+// console.log("CHECK PATH: req.route.path", req.route.path);
 
                 var subPath = req.url;//.replace(req.route.path, "");
 
